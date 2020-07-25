@@ -1,0 +1,2 @@
+include ':app'
+rootProject.name='RN_Integration_with_existing_app'
