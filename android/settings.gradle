@@ -1,4 +1,6 @@
 include ':app'
+include ':react-native-webrtc'
+project(':react-native-webrtc').projectDir = new File(rootProject.projectDir, '../node_modules/react-native-webrtc/android')
 rootProject.name='RN_Integration_with_existing_app'
 include ':WebRTCModule', ':app'
 project(':WebRTCModule').projectDir = new File(rootProject.projectDir, '../node_modules/react-native-webrtc/android')

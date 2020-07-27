@@ -35,6 +35,7 @@ android {
 }
 
 dependencies {
+    compile project(':react-native-webrtc')
     implementation 'com.android.support:appcompat-v7:27.1.1'
     implementation fileTree(dir: 'libs', include: ['*.jar'])
     if (enableHermes) {

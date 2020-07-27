@@ -10,6 +10,8 @@ import {
     mediaDevices,
 } from 'react-native-webrtc';
 import io from 'socket.io-client';
+import * as webrtc from 'react-native-webrtc';
+
 import { Button } from './components';
 import { values } from 'lodash';
 
@@ -39,9 +41,9 @@ const App = () => {
     // const { streamURL } = this.state;
     // const remoteList = values(this.state.remoteList);
     useEffect(() => {
-        // (async () => {
-        //     await getLocalStream();
-        // })()
+        (async () => {
+            await getLocalStream();
+        })()
         socket.on('leave', () => {
             this.leave();
         });
@@ -53,10 +55,12 @@ const App = () => {
         });
     }, [])
     const getLocalStream = async () => {
+        console.log("webrtc",webrtc.mediaDevices.enumerateDevices())
         try {
             // console.log("mediaDevices",mediaDevices.)
             // const sourceInfos = await mediaDevices.enumerateDevices();
             // const videoSourceId = sourceInfos.find(item => item.kind === 'videoinput' && item.facing === 'front').deviceId;
+            console.log("mediaDevices", stream)
 
             const stream = await mediaDevices
                 .getUserMedia({
@@ -72,7 +76,6 @@ const App = () => {
                         // optional: videoSourceId ? [{ sourceId: videoSourceId }] : [],
                     },
                 })
-            console.log("stream",stream)
             join('abc');
             setLocalStream(stream)
         } catch (error) {
@@ -198,9 +201,9 @@ const App = () => {
 
     return (
         <View style={{ flex: 1 }}>
-            <Button func={() => {
-                getLocalStream()
-            }} text={'Enter room'}/>
+            {/*<Button func={() => {*/}
+            {/*    getLocalStream()*/}
+            {/*}} text={'Enter room'}/>*/}
             {/*<Button func={hangOff} text={'hang off'}/>*/}
             {/*<Button func={switchCamera} text={'Change Camera'}/>*/}
             {/*<RTCView streamURL={localStream.toURL()} style={styles.rtcView}/>*/}

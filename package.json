@@ -7,12 +7,18 @@
     "start": "react-native start",
     "android": "react-native run-android"
   },
+  "rnpm": {
+    "android": {
+      "mainFilePath": "src/main/java/com/example/rn_integration_with_existing_app/MainApplication.kt"
+    }
+  },
   "dependencies": {
     "jsc-android": "241213.1.0",
     "react": "16.13.1",
-    "react-native": "^0.63.2",
+    "react-native": "0.63.2",
     "react-native-webrtc": "1.69.0",
-    "socket.io-client": "^2.3.0"
+    "rnpm": "^1.9.0",
+    "socket.io-client": "^2.3.0",
+    "undefined": "^0.1.0"
   }
 }
-
