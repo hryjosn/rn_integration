@@ -17,7 +17,6 @@ private val mReactInstanceManager: ReactInstanceManager? = null
 class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        Log.e("MainActivity","onCreate")
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -32,7 +31,7 @@ class MainActivity : AppCompatActivity() {
     }
     fun onAddRNClick(view: View) {
         // Set up the intent
-        val i = Intent(applicationContext, MyReactActivity::class.java)
+        val i = Intent(this, MyReactActivity::class.java)
         // Launch It
         startActivity(i)
     }

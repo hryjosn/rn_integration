@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState,Component } from 'react';
 import {
-    View, StyleSheet, Text
+    View, StyleSheet, Text,
 } from 'react-native';
 import {
     RTCPeerConnection,
@@ -10,13 +10,17 @@ import {
     mediaDevices,
 } from 'react-native-webrtc';
 import io from 'socket.io-client';
-import * as webrtc from 'react-native-webrtc';
+import {button, container, rtcView, text} from './styles';
 
 import { Button } from './components';
 import { values } from 'lodash';
 
-const url = 'localhost:8080';
+const url = 'http://192.168.50.102';
 
+
+/* ==============================
+ Global variables
+ ================================ */
 const configuration = {
     iceServers: [
         {
@@ -28,43 +32,50 @@ const configuration = {
     ],
 };
 
+let localStream;
 
-const App = () => {
-    const socket = io.connect(url, { transports: ['websocket'] });
-    const pcPeers = {};
-    const [localStream, setLocalStream] = useState(undefined)
-    // localStream: '',
-    //     remoteList: [],
-    //     remoteCamera: 1, //on:1 ,off :0
-    //     localCamera: 1, //on:1 ,off :0
-    //     stateMicrophone: true,
-    // const { streamURL } = this.state;
-    // const remoteList = values(this.state.remoteList);
-    useEffect(() => {
-        (async () => {
-            await getLocalStream();
-        })()
-        socket.on('leave', () => {
+/* ==============================
+ Class
+ ================================ */
+class App extends Component {
+    constructor(props) {
+        super(props);
+        this.pcPeers = {};
+        this.socket = io.connect(url, {transports: ['websocket']});
+        this.state = {
+            localStream: '',
+            remoteList: [],
+            remoteCamera: 1, //on:1 ,off :0
+            localCamera: 1, //on:1 ,off :0
+            stateMicrophone: true,
+        };
+    }
+
+    componentDidMount() {
+        this.getLocalStream();
+        this.socket.on('leave', () => {
             this.leave();
         });
-        socket.on('exchange', data => {
+        this.socket.on('exchange', data => {
             this.exchange(data);
         });
-        socket.on('turnOffCamera', param => {
-            this.setState({ remoteCamera: param });
+        this.socket.on('turnOffCamera', param => {
+            this.setState({remoteCamera: param});
         });
-    }, [])
-    const getLocalStream = async () => {
-        console.log("webrtc",webrtc.mediaDevices.enumerateDevices())
-        try {
-            // console.log("mediaDevices",mediaDevices.)
-            // const sourceInfos = await mediaDevices.enumerateDevices();
-            // const videoSourceId = sourceInfos.find(item => item.kind === 'videoinput' && item.facing === 'front').deviceId;
-            console.log("mediaDevices", stream)
+    }
 
-            const stream = await mediaDevices
+    getLocalStream = () => {
+        mediaDevices.enumerateDevices().then(sourceInfos => {
+            let videoSourceId;
+            for (let i = 0; i < sourceInfos.length; i++) {
+                const sourceInfo = sourceInfos[i];
+                if (sourceInfo.kind === 'videoinput' && sourceInfo.facing === 'front') {
+                    videoSourceId = sourceInfo.deviceId;
+                }
+            }
+            mediaDevices
                 .getUserMedia({
-                    //this function request both camera and audio permissions
+                    //this function also request camera and audio permissions
                     audio: true,
                     video: {
                         mandatory: {
@@ -73,21 +84,28 @@ const App = () => {
                             minFrameRate: 30,
                         },
                         facingMode: 'user',
-                        // optional: videoSourceId ? [{ sourceId: videoSourceId }] : [],
+                        optional: videoSourceId ? [{sourceId: videoSourceId}] : [],
                     },
                 })
-            join('abc');
-            setLocalStream(stream)
-        } catch (error) {
-            console.log('getLocalStream error:', error);
-        }
+                .then(async stream => {
+                    this.join('abc');
+                    this.localStream = stream;
+                    this.setState({
+                        localStream: stream,
+                        streamURL: stream.toURL(),
+                    });
+                })
+                .catch(error => {
+                    console.log('error>>>', error);
+                });
+        });
     };
-    const switchCamera = () => {
+    switchCamera = () => {
         localStream.getVideoTracks().forEach(track => {
             track._switchCamera();
         });
     };
-    const exchange = data => {
+    exchange = data => {
         const fromId = data.from;
         let pc;
         if (fromId in this.pcPeers) {
@@ -118,14 +136,19 @@ const App = () => {
             pc.addIceCandidate(new RTCIceCandidate(data.candidate));
         }
     };
-    const onPress = () => {
+    onPress = () => {
         this.join('abc');
     };
     //hang off the phone
-    const hangOff = () => {
+    hangOff = () => {
         this.socket.emit('declineCalling', 'abc');
     };
-    const join = roomID => {
+    button = (func, text) => (
+        <TouchableOpacity style={button.container} onPress={func}>
+            <Text style={button.style}>{text}</Text>
+        </TouchableOpacity>
+    );
+    join = roomID => {
         let callback = socketIds => {
             Object.keys(socketIds).forEach(index => {
                 this.createPC(socketIds[index], true);
@@ -133,7 +156,7 @@ const App = () => {
         };
         this.socket.emit('join', roomID, callback);
     };
-    const leave = () => {
+    leave = () => {
         values(this.pcPeers).forEach(pcPeer => {
             pcPeer.close();
         });
@@ -141,7 +164,7 @@ const App = () => {
             remoteList: {},
         });
     };
-    const createPC = (socketId, isOffer) => {
+    createPC = (socketId, isOffer) => {
         const peer = new RTCPeerConnection(configuration);
         this.pcPeers = {
             ...this.pcPeers,
@@ -182,7 +205,7 @@ const App = () => {
             const remoteList = this.state.remoteList;
             remoteList[socketId] = event.stream;
 
-            this.setState({ remoteList });
+            this.setState({remoteList});
         };
 
         const createOffer = () => {
@@ -199,37 +222,32 @@ const App = () => {
         return peer;
     };
 
-    return (
-        <View style={{ flex: 1 }}>
-            {/*<Button func={() => {*/}
-            {/*    getLocalStream()*/}
-            {/*}} text={'Enter room'}/>*/}
-            {/*<Button func={hangOff} text={'hang off'}/>*/}
-            {/*<Button func={switchCamera} text={'Change Camera'}/>*/}
-            {/*<RTCView streamURL={localStream.toURL()} style={styles.rtcView}/>*/}
+    render() {
+        const {streamURL} = this.state;
+        const remoteList = values(this.state.remoteList);
 
-            {/*{remoteList.length > 0 && (*/}
-            {/*    <RTCView*/}
-            {/*        style={styles.rtcView}*/}
-            {/*        objectFit={'cover'}*/}
-            {/*        key={`Remote_RTCView`}*/}
-            {/*        streamURL={remoteList[remoteList.length - 1].toURL()}*/}
-            {/*    />*/}
-            {/*)}*/}
-            <Text> 123 </Text>
-        </View>
+        return (
+            <View style={container.style}>
+                <Button func={() => {
+                    this.join('aaaaaa')
+                    console.log("enter room")
+                }} text={'Enter room'}/>
+                <Button func={this.hangOff} text={'hang off'}/>
+                <Button func={this.switchCamera} text={'Change Camera'}/>
 
+                <RTCView streamURL={streamURL} style={rtcView.style} />
 
-    )
+                {remoteList.length > 0 && (
+                    <RTCView
+                        style={rtcView.style}
+                        objectFit={'cover'}
+                        key={`Remote_RTCView`}
+                        streamURL={remoteList[remoteList.length - 1].toURL()}
+                    />
+                )}
+            </View>
+        );
+    }
 }
 
 export default App;
-const styles = StyleSheet.create({
-    rtcView: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: 150,
-        margin: 10,
-    },
-});
