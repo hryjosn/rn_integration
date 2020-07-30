@@ -1,6 +1,6 @@
 import React, { useEffect, useState, Component } from 'react';
 import {
-    View, StyleSheet, Text,
+    View, StyleSheet,
 } from 'react-native';
 import {
     RTCPeerConnection,
@@ -10,8 +10,6 @@ import {
     mediaDevices,
 } from 'react-native-webrtc';
 import io from 'socket.io-client';
-import { container, rtcView } from './styles';
-
 import { Button } from './components';
 import { values } from 'lodash';
 
