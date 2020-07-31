@@ -1,4 +1,4 @@
-import React, { useEffect, useState, Component } from 'react';
+import React, { Component } from 'react';
 import {
     View, StyleSheet,
 } from 'react-native';
@@ -13,7 +13,7 @@ import io from 'socket.io-client';
 import { Button } from './components';
 import { values } from 'lodash';
 
-const url = 'http://localhost'; //please replace with your ip
+const url = 'http://localhost'; //socketUrl: replace with signal server url
 
 
 const configuration = {
@@ -35,22 +35,20 @@ class App extends Component {
         this.state = {
             localStream: undefined,
             remoteList: [],
-            remoteCamera: 1, //on:1 ,off :0
-            localCamera: 1, //on:1 ,off :0
             stateMicrophone: true,
         };
     }
 
     async componentDidMount() {
         await this.getLocalStream();
+        //The socket event
         this.socket.on('leave', () => {
+            //leave the room
             this.leave();
         });
         this.socket.on('exchange', data => {
+            //exchange each other's socketId
             this.exchange(data);
-        });
-        this.socket.on('turnOffCamera', param => {
-            this.setState({ remoteCamera: param });
         });
     }
 
@@ -63,21 +61,23 @@ class App extends Component {
                 audio: true,
                 video: {
                     mandatory: {
+                        // Provide your own width, height and frame rate here
                         minWidth: 640,
                         minHeight: 360,
                         minFrameRate: 30,
                     },
                     facingMode: 'user',
-                    optional: videoSourceId ? [{ sourceId: videoSourceId }] : [],
+                    optional: videoSourceId ? [{ sourceId: videoSourceId }] : [],//sourceId for iOS
                 },
             }
             const localStream = await mediaDevices.getUserMedia(constrains)
-            this.setState({ localStream })
+            this.setState({ localStream }) //set the localStream for local view
         } catch (error) {
             console.log('getLocalStream error:', error);
         }
     };
     switchCamera = () => {
+        //switch front or back camera
         this.localStream.getVideoTracks().forEach(track => {
             track._switchCamera();
         });
@@ -90,7 +90,6 @@ class App extends Component {
         } else {
             pc = await this.createPC(fromId, false, this.localStream);
         }
-
         if (data.sdp) {
             let sdp = new RTCSessionDescription(data.sdp);
             await pc.setRemoteDescription(sdp)
@@ -102,17 +101,15 @@ class App extends Component {
                     sdp: pc.localDescription,
                 })
             }
-
         } else {
             if (data.candidate) {
                 pc.addIceCandidate(new RTCIceCandidate(data.candidate));
-
             }
         }
     };
     //hang off the phone
     hangOff = () => {
-        this.socket.emit('declineCalling', 'abc');
+        this.socket.emit('declineCalling', 'rolotest');
     };
     join = roomID => {
         let callback = socketIds => {
@@ -139,7 +136,6 @@ class App extends Component {
         peer.addStream(this.state.localStream);
 
         peer.onicecandidate = event => {
-            console.log("onicecandidate event", event)
             if (event.candidate) {
                 this.socket.emit('exchange', {
                     to: socketId,
@@ -148,41 +144,21 @@ class App extends Component {
             }
         };
 
-        peer.onnegotiationneeded = () => {
+        peer.onnegotiationneeded = async () => {
             if (isOffer) {
-                createOffer();
+                const desc = await peer.createOffer()
+                await peer.setLocalDescription(desc)
+                this.socket.emit('exchange', {
+                    to: socketId,
+                    sdp: peer.localDescription,
+                });
             }
         };
-
-        // peer.onsignalingstatechange = async event => {
-        //     // when the signal state become stable record the data and stop ringback
-        //
-        //     if (event.target.signalingState === 'stable') {
-        //         if (Platform.OS === 'ios') {
-        //             this.localStream.getVideoTracks().forEach(track => {
-        //                 //For ios to trigger the camera on
-        //                 track._switchCamera();
-        //                 track._switchCamera();
-        //             });
-        //         }
-        //     }
-        // };
-
         peer.onaddstream = event => {
             const remoteList = this.state.remoteList;
             remoteList[socketId] = event.stream;
             this.setState({ remoteList });
         };
-
-        const createOffer = async () => {
-            const desc = await peer.createOffer()
-            await peer.setLocalDescription(desc)
-            this.socket.emit('exchange', {
-                to: socketId,
-                sdp: peer.localDescription,
-            });
-        };
-
         return peer;
     };
 
@@ -191,12 +167,7 @@ class App extends Component {
         const remoteList = values(this.state.remoteList);
 
         return (
-            <View style={{
-                flex: 1,
-
-            }}>
-
-
+            <View style={{ flex: 1 }}>
                 {localStream && <RTCView streamURL={localStream.toURL()} style={styles.rtcView}/>}
 
                 {remoteList.length > 0 && (
@@ -207,10 +178,9 @@ class App extends Component {
                         streamURL={remoteList[remoteList.length - 1].toURL()}
                     />
                 )}
-                <View style={{alignItems: "center"}}>
+                <View style={{ alignItems: "center" }}>
                     <Button func={() => {
                         this.join('rolotest')
-                        console.log("enter room")
                     }} text={'Enter room'}/>
                     <Button func={this.hangOff} text={'hang off'}/>
                     <Button func={this.switchCamera} text={'Change Camera'}/>
