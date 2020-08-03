@@ -3,6 +3,7 @@ import storeAction from '@store/storeAction';
 import io from "socket.io-client";
 import { mediaDevices, RTCIceCandidate, RTCPeerConnection, RTCSessionDescription } from "react-native-webrtc";
 import { values } from 'lodash';
+
 const url = 'http://192.168.50.102'; //socketUrl: replace with signal server url
 
 const configuration = {
@@ -68,7 +69,19 @@ class CallingStore extends storeAction {
             track._switchCamera();
         });
     };
-    @action exchange = async data => {
+    @action hangOff = () => {
+        // disconnect the call
+        this.socket.emit('declineCalling', 'rolotest');
+    };
+    @action join = roomID => {
+        let callback = socketIds => {
+            Object.keys(socketIds).forEach(index => {
+                this.createPC(socketIds[index], true);
+            });
+        };
+        this.socket.emit('join', roomID, callback);
+    };
+    exchange = async data => {
         const fromId = data.from; //The socket ID from other user
         let pc;
         if (fromId in this.pcPeers) {
@@ -83,8 +96,9 @@ class CallingStore extends storeAction {
 
         if (data.sdp) {
             let sdp = new RTCSessionDescription(data.sdp);
-            await pc.setRemoteDescription(sdp)
+            await pc.setRemoteDescription(sdp) // set remote description which was for other client
             if (pc.remoteDescription.type === 'offer') {
+                //when getting type is offer, then response a answer
                 const desc = await pc.createAnswer()
                 await pc.setLocalDescription(desc)
                 this.socket.emit('exchange', {
@@ -95,34 +109,19 @@ class CallingStore extends storeAction {
 
         } else {
             if (data.candidate) {
+                // receive other client's candidate then add it into current RTCPeerConnection
                 pc.addIceCandidate(new RTCIceCandidate(data.candidate));
             }
         }
-    };
-    @action hangOff = () => {
-        this.socket.emit('declineCalling', 'rolotest');
-    };
-    @action join = roomID => {
-        let callback = socketIds => {
-            Object.keys(socketIds).forEach(index => {
-                this.createPC(socketIds[index], true);
-            });
-        };
-        this.socket.emit('join', roomID, callback);
-    };
-    @action leave = () => {
-        values(this.pcPeers).forEach(pcPeer => {
-            pcPeer.close();
-        });
-        this.remoteList={}
 
     };
-    @action createPC = (socketId, isOffer) => {
+    createPC = (socketId, isOffer) => {
         const peer = new RTCPeerConnection(configuration); // new a peer connection
         peer.addStream(this.localStream);   // add the local stream into peer connection
 
         peer.onicecandidate = event => {
             if (event.candidate) {
+                // when get ice candidate. send the candidate info to other client
                 this.socket.emit('exchange', {
                     to: socketId,
                     candidate: event.candidate,
@@ -134,6 +133,7 @@ class CallingStore extends storeAction {
             if (isOffer) {
                 const desc = await peer.createOffer()
                 await peer.setLocalDescription(desc)
+                //send the localDescription to other client
                 this.socket.emit('exchange', {
                     to: socketId,
                     sdp: peer.localDescription,
@@ -144,9 +144,15 @@ class CallingStore extends storeAction {
             // when the new stream was added event
             this.remoteList[socketId] = event.stream;
         };
-        this.pcPeers.socketId = peer; // add new pc into pcPeers object
+        this.pcPeers.socketId = peer; // add new peer connection into pcPeers object
         return peer;
     };
+    leave = () => {
+        values(this.pcPeers).forEach(pcPeer => {
+            pcPeer.close();
+        });
+        this.remoteList = {}
+    }
 }
 
 export default new CallingStore();
