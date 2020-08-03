@@ -11,8 +11,15 @@ import { values } from 'lodash';
 import { useStores } from "../../store";
 
 const CallingScreen = () => {
-    const { localStream, remoteList, getLocalStream, hangOff, switchCamera, join } = useStores()['CallingStore']
-    const remoteStream = values(remoteList)[values(remoteList).length - 1];
+    const {
+        localStream,
+        remoteList,
+        getLocalStream,
+        hangOff,
+        switchCamera,
+        join
+    } = useStores()['CallingStore'] //get the state from CallingStore
+    const remoteStream = values(remoteList)[values(remoteList).length - 1]; //get a value from remoteList object
     useEffect(() => {
         const init = async () => {
             await getLocalStream();
@@ -22,10 +29,12 @@ const CallingScreen = () => {
     }, [])
     return (
         <View style={{ flex: 1 }}>
+            {/*local video view*/}
             <RTCView objectFit={'cover'}
                      streamURL={localStream?.toURL()} style={{ flex: 1 }}/>
             {
                 remoteStream ?
+                    //remote view
                     <RTCView
                         style={{ flex: 1 }}
                         objectFit={'cover'}
@@ -38,7 +47,7 @@ const CallingScreen = () => {
 
             <View style={{ flexDirection: "row" }}>
                 <Button func={() => {
-                    join('rolotest')
+                    join('rolotest') // demo room ID, can replace it with dynamic string
                 }} text={'Enter room'}/>
                 <Button func={hangOff} text={'hang off'}/>
                 <Button func={switchCamera} text={'Change Camera'}/>
@@ -47,4 +56,4 @@ const CallingScreen = () => {
     );
 }
 
-export default observer(CallingScreen);
+export default observer(CallingScreen); // make the CallingScreen as a observable component
